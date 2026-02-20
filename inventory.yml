@@ -2,29 +2,47 @@ global:
   project_name: "speedtest-docker-stack"
   stack_root: "/opt/speedtest-docker-stack"
 
-  # Interface do host onde chegam/saem os blocos públicos roteados
+  # Interface do host (VM Debian) que enxerga a rede pública roteada
   parent_iface: "ens192"
 
-  # Subnet lógica para ipvlan l3 (IPv4)
+  # Subnet lógica para alocação IPv4 no ipvlan L3
   public_subnet_ipv4: "45.179.238.0/24"
 
-  # Subnet lógica para ipvlan l3 (IPv6)
-#  public_subnet_ipv6: "2804:xxxx:xxxx:1000::/64"
+  # Subnet lógica para alocação IPv6 no ipvlan L3
+  # TROQUE pelo seu /64 real
+  public_subnet_ipv6: "2804:60d4:0045:0179:0000:0000:0000:0000/64"
 
+  # Começamos sem TLS
   tls_enabled: false
-  certbot_email: "noc@st1internet.com.br"
+
+  # Email para certbot
+  certbot_email: "noc@st1.net.br"
 
 instances:
   - name: "speedtest01"
     fqdn: "speedtest01.st1internet.com.br"
     ipv4: "45.179.238.59"
-#   ipv6: "2804:xxxx:xxxx:1000::59"
+    ipv6: "2804:60D4:45:179:238::59"
     ookla:
       properties_raw: ""
 
   - name: "speedtest02"
     fqdn: "speedtest02.st1internet.com.br"
     ipv4: "45.179.238.60"
-#   ipv6: "2804:xxxx:xxxx:1000::60"
+    ipv6: "2804:60D4:45:179:238::60"
+    ookla:
+      properties_raw: ""
+
+  - name: "speedtest03"
+    fqdn: "speedtest03.st1internet.com.br"
+    ipv4: "45.179.238.61"
+    ipv6: "2804:60D4:45:179:238::61"
+    ookla:
+      properties_raw: ""
+
+  - name: "speedtest04"
+    fqdn: "speedtest04.st1internet.com.br"
+    ipv4: "45.179.238.62"
+    ipv6: "2804:60D4:45:179:238::62"
     ookla:
       properties_raw: ""
