@@ -1,0 +1,8 @@
+# Copie para inventory.private.yml e ajuste conteúdos sensíveis.
+# Este arquivo NÃO deve ser versionado com dados reais.
+instances:
+  - name: "speedtest01"
+    ookla:
+      properties_raw: |
+        # Exemplo de bloco completo fornecido pelo Ookla
+        # key=value

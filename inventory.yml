@@ -2,42 +2,29 @@ global:
   project_name: "speedtest-docker-stack"
   stack_root: "/opt/speedtest-docker-stack"
 
-  # Interface do host (VM Debian) que enxerga a rede por onde chegam os /32
-  # Ex.: ens192 (como você mostrou)
+  # Interface do host onde chegam/saem os blocos públicos roteados
   parent_iface: "ens192"
 
-  # Subnet "lógica" usada pelo Docker IPAM para alocar IPs no ipvlan L3
-  # Use o bloco ao qual pertencem os /32 que você vai usar.
+  # Subnet lógica para ipvlan l3 (IPv4)
   public_subnet_ipv4: "45.179.238.0/24"
 
-  # Vamos iniciar sem TLS (depois habilita)
-  tls_enabled: false
+  # Subnet lógica para ipvlan l3 (IPv6)
+#  public_subnet_ipv6: "2804:xxxx:xxxx:1000::/64"
 
-  # Email do certbot (quando for emitir)
+  tls_enabled: false
   certbot_email: "noc@st1internet.com.br"
 
 instances:
   - name: "speedtest01"
     fqdn: "speedtest01.st1internet.com.br"
     ipv4: "45.179.238.59"
+#   ipv6: "2804:xxxx:xxxx:1000::59"
     ookla:
-      # Coloque o bloco COMPLETO (linhas adicionais) no inventory.private.yml
       properties_raw: ""
 
   - name: "speedtest02"
     fqdn: "speedtest02.st1internet.com.br"
     ipv4: "45.179.238.60"
-    ookla:
-      properties_raw: ""
-
-  - name: "speedtest03"
-    fqdn: "speedtest03.st1internet.com.br"
-    ipv4: "45.179.238.61"
-    ookla:
-      properties_raw: ""
-
-  - name: "speedtest04"
-    fqdn: "speedtest04.st1internet.com.br"
-    ipv4: "45.179.238.62"
+#   ipv6: "2804:xxxx:xxxx:1000::60"
     ookla:
       properties_raw: ""

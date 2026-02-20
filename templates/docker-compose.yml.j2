@@ -1,9 +1,8 @@
 version: "3.9"
-
 name: {{ global.project_name }}
 
 services:
-  {% for inst in instances %}
+{% for inst in instances %}
   {{ inst.name }}_ookla:
     image: st1/ookla-server:stable
     container_name: {{ global.project_name }}_{{ inst.name }}_ookla
@@ -13,33 +12,23 @@ services:
     volumes:
       - "{{ env.STACK_ROOT }}/data/{{ inst.name }}:/opt/ookla/data"
       - "{{ env.STACK_ROOT }}/generated/config/{{ inst.name }}/OoklaServer.properties:/opt/ookla/OoklaServer.properties:ro"
-    healthcheck:
-      test: ["CMD-SHELL", "ss -lnt | grep -q ':8080' && ss -lnt | grep -q ':5060'"]
-      interval: 10s
-      timeout: 3s
-      retries: 12
 
   {{ inst.name }}_acme:
     image: st1/acme-nginx:stable
     container_name: {{ global.project_name }}_{{ inst.name }}_acme
     restart: unless-stopped
     depends_on:
-      {{ inst.name }}_ookla:
-        condition: service_healthy
+      - {{ inst.name }}_ookla
     networks:
       backend: {}
       public_l3:
         ipv4_address: "{{ inst.ipv4 }}"
+        ipv6_address: "{{ inst.ipv6 }}"
     volumes:
       - "{{ env.STACK_ROOT }}/webroot:/var/www/certbot"
       - "{{ env.STACK_ROOT }}/letsencrypt:/etc/letsencrypt:ro"
       - "{{ env.STACK_ROOT }}/generated/config/{{ inst.name }}/nginx.conf:/etc/nginx/conf.d/speedtest.conf:ro"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz | grep -q ok"]
-      interval: 10s
-      timeout: 3s
-      retries: 12
-  {% endfor %}
+{% endfor %}
 
   certbot:
     image: certbot/certbot:latest
@@ -56,9 +45,11 @@ networks:
 
   public_l3:
     driver: ipvlan
+    enable_ipv6: true
     driver_opts:
       parent: "{{ global.parent_iface }}"
       ipvlan_mode: "l3"
     ipam:
       config:
         - subnet: "{{ global.public_subnet_ipv4 }}"
+        - subnet: "{{ global.public_subnet_ipv6 }}"

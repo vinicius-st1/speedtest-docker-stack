@@ -1,68 +1,61 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
-import sys
 import copy
+import sys
 from pathlib import Path
-
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-
-STACK_ROOT = Path("/opt/speedtest-docker-stack")
-TEMPLATES_DIR = STACK_ROOT / "templates"
-GENERATED_DIR = STACK_ROOT / "generated"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TEMPLATES_DIR = REPO_ROOT / "templates"
+GENERATED_DIR = REPO_ROOT / "generated"
 CONFIG_DIR = GENERATED_DIR / "config"
 
+def load_yaml(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 def deep_merge(a: dict, b: dict) -> dict:
-    """Recursively merge b into a (b wins)."""
     out = copy.deepcopy(a)
     for k, v in (b or {}).items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
             out[k] = deep_merge(out[k], v)
         elif isinstance(v, list) and isinstance(out.get(k), list):
-            # Merge list of dicts by "name" when possible
-            if all(isinstance(i, dict) and "name" in i for i in v) and all(isinstance(i, dict) and "name" in i for i in out[k]):
-                by_name = {i["name"]: i for i in out[k]}
-                for item in v:
-                    name = item["name"]
-                    by_name[name] = deep_merge(by_name.get(name, {}), item)
-                out[k] = list(by_name.values())
-            else:
-                out[k] = v
+            by_name = {i.get("name"): i for i in out[k] if isinstance(i, dict) and i.get("name")}
+            for item in v:
+                if isinstance(item, dict) and item.get("name"):
+                    by_name[item["name"]] = deep_merge(by_name.get(item["name"], {}), item)
+            out[k] = list(by_name.values())
         else:
             out[k] = v
     return out
 
-
-def load_yaml(path: Path) -> dict:
-    if not path.exists():
-        return {}
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
 def main() -> int:
-    inv_public = load_yaml(STACK_ROOT / "inventory.yml")
-    inv_private = load_yaml(STACK_ROOT / "inventory.private.yml")
-    inv = deep_merge(inv_public, inv_private)
-
+    inv = deep_merge(load_yaml(REPO_ROOT / "inventory.yml"), load_yaml(REPO_ROOT / "inventory.private.yml"))
     global_cfg = inv.get("global", {})
     instances = inv.get("instances", [])
 
-    required_globals = ["project_name", "stack_root", "parent_iface", "public_subnet_ipv4", "tls_enabled", "certbot_email"]
-    missing = [k for k in required_globals if k not in global_cfg]
-    if missing:
-        print(f"[render.py] ERRO: chaves ausentes em global: {missing}", file=sys.stderr)
+    required_global = ["project_name", "stack_root", "parent_iface", "public_subnet_ipv4", "public_subnet_ipv6", "tls_enabled", "certbot_email"]
+    missing_g = [k for k in required_global if k not in global_cfg]
+    if missing_g:
+        print(f"[ERRO] global sem chaves: {missing_g}", file=sys.stderr)
         return 2
 
-    if not isinstance(instances, list) or len(instances) == 0:
-        print("[render.py] ERRO: instances está vazio.", file=sys.stderr)
+    if not isinstance(instances, list) or not instances:
+        print("[ERRO] instances vazio.", file=sys.stderr)
         return 2
 
-    # Prepare env vars for compose/template rendering
+    for i, inst in enumerate(instances, start=1):
+        for key in ["name", "fqdn", "ipv4", "ipv6"]:
+            if not inst.get(key):
+                print(f"[ERRO] instances[{i}] sem '{key}'.", file=sys.stderr)
+                return 2
+
+    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
     env_map = {
         "COMPOSE_PROJECT_NAME": str(global_cfg["project_name"]),
         "STACK_ROOT": str(global_cfg["stack_root"]),
@@ -70,16 +63,8 @@ def main() -> int:
         "CERTBOT_EMAIL": str(global_cfg["certbot_email"]),
     }
 
-    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    (GENERATED_DIR / ".env").write_text("".join(f"{k}={v}\n" for k, v in env_map.items()), encoding="utf-8")
 
-    # Write .env (used by docker compose)
-    env_path = GENERATED_DIR / ".env"
-    with env_path.open("w", encoding="utf-8") as f:
-        for k, v in env_map.items():
-            f.write(f"{k}={v}\n")
-
-    # Render templates
     jenv = Environment(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
         undefined=StrictUndefined,
@@ -88,39 +73,25 @@ def main() -> int:
         lstrip_blocks=True,
     )
 
-    # Compose
-    compose_tpl = jenv.get_template("docker-compose.yml.j2")
-    compose_out = compose_tpl.render(global=global_cfg, instances=instances, env=env_map)
+    compose_out = jenv.get_template("docker-compose.yml.j2").render(**{"global": global_cfg, "instances": instances, "env": env_map})
     (GENERATED_DIR / "docker-compose.yml").write_text(compose_out + "\n", encoding="utf-8")
 
-    # Per-instance configs
     nginx_tpl = jenv.get_template("nginx.conf.j2")
     ookla_tpl = jenv.get_template("OoklaServer.properties.j2")
 
-    names_txt = []
+    names = []
     for inst in instances:
-        name = inst["name"]
-        names_txt.append(name)
-
-        inst_dir = CONFIG_DIR / name
+        names.append(inst["name"])
+        inst_dir = CONFIG_DIR / inst["name"]
         inst_dir.mkdir(parents=True, exist_ok=True)
-
-        # nginx.conf
-        nginx_out = nginx_tpl.render(global=global_cfg, inst=inst)
-        (inst_dir / "nginx.conf").write_text(nginx_out + "\n", encoding="utf-8")
-
-        # OoklaServer.properties
-        # Guarantee nested dict exists
+        (inst_dir / "nginx.conf").write_text(nginx_tpl.render(**{"global": global_cfg, "inst": inst}) + "\n", encoding="utf-8")
         inst.setdefault("ookla", {})
         inst["ookla"].setdefault("properties_raw", "")
-        ookla_out = ookla_tpl.render(inst=inst)
-        (inst_dir / "OoklaServer.properties").write_text(ookla_out + "\n", encoding="utf-8")
+        (inst_dir / "OoklaServer.properties").write_text(ookla_tpl.render(inst=inst) + "\n", encoding="utf-8")
 
-    (GENERATED_DIR / "instances.txt").write_text("\n".join(names_txt) + "\n", encoding="utf-8")
-
-    print("[render.py] OK: arquivos gerados em /opt/speedtest-docker-stack/generated/")
+    (GENERATED_DIR / "instances.txt").write_text("\n".join(names) + "\n", encoding="utf-8")
+    print(f"[OK] arquivos gerados em {GENERATED_DIR}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
