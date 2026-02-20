@@ -1,0 +1,17 @@
+# Gerados automaticamente
+/generated/
+!/generated/.env.example
+
+# Certificados e desafios ACME
+/letsencrypt/
+/webroot/.well-known/
+
+# Dados persistentes do Ookla (logs, pid, runtime)
+/data/
+
+# Inventário privado com chaves
+/inventory.private.yml
+
+# Editor/OS
+.DS_Store
+*.swp

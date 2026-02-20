@@ -1,0 +1,14 @@
+# Gerado automaticamente. Não edite manualmente.
+# Instância: {{ inst.name }} ({{ inst.fqdn }})
+
+# (Começar sem IPv6, como solicitado)
+OoklaServer.useIPv6 = false
+
+# Domínios permitidos (inclua aqui o FQDN da instância)
+OoklaServer.allowedDomains = {{ inst.fqdn }}
+
+# Recomendações de segurança/controle (ajustáveis depois)
+OoklaServer.userAgentFilterEnabled = true
+
+# A partir daqui, você cola o conteúdo "real" (server-id/server-key/etc) no inventory.private.yml:
+{{ inst.ookla.properties_raw | default("") }}
