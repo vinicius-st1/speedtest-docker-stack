@@ -28,6 +28,8 @@ Este repositório automatiza a geração de arquivos e o deploy da stack com bas
   Validação pré-deploy (inventário, sintaxe, interface de rede e geração dos arquivos).
 - `/opt/speedtest-docker-stack/scripts/apply.sh`  
   Pipeline de aplicação (preflight + diretórios + build + compose up).
+- `/opt/speedtest-docker-stack/scripts/diagnose.sh`  
+  Diagnóstico pós-deploy para erros HTTP 502, DNS e backend Ookla por instância.
 - `/opt/speedtest-docker-stack/templates/docker-compose.yml.j2`  
   Modelo dos serviços e rede pública `ipvlan` L3.
 
@@ -84,6 +86,9 @@ curl -I http://speedtest01.st1internet.com.br
 curl -I http://speedtest02.st1internet.com.br
 curl -I http://speedtest03.st1internet.com.br
 curl -I http://speedtest04.st1internet.com.br
+
+# Se houver 502 em qualquer instância
+bash /opt/speedtest-docker-stack/scripts/diagnose.sh
 ```
 
 ---
@@ -256,15 +261,11 @@ instances:
     fqdn: "speedtest01.st1internet.com.br"
     ipv4: "45.179.238.59"
     ipv6: "2804:60D4:45:179:238::59"
-    ookla:
-      properties_raw: ""
 
   - name: "speedtest02"
     fqdn: "speedtest02.st1internet.com.br"
     ipv4: "45.179.238.60"
     ipv6: "2804:60D4:45:179:238::60"
-    ookla:
-      properties_raw: ""
 ```
 
 ---
@@ -281,6 +282,8 @@ cp /opt/speedtest-docker-stack/inventory.private.yml.example /opt/speedtest-dock
 ```
 
 Use este arquivo para dados sensíveis e blocos `properties_raw` de cada instância.
+
+> `ookla.properties_raw` é obrigatório por instância. Sem ele, o preflight falha para evitar deploy inconsistente (causa comum de `502 Bad Gateway`).
 
 ### Exemplo completo de arquivo
 
@@ -420,11 +423,18 @@ cat /opt/speedtest-docker-stack/generated/config/speedtest01/OoklaServer.propert
 bash /opt/speedtest-docker-stack/scripts/apply.sh
 ```
 
+7. Rodar diagnóstico automático completo:
+
+```bash
+bash /opt/speedtest-docker-stack/scripts/diagnose.sh
+```
+
 Causas mais comuns de `502` neste projeto:
 - `OoklaServer.properties` inválido ou incompleto.
 - Processo Ookla não iniciou corretamente no container `_ookla`.
 - Nome da instância divergente entre inventário e arquivos gerados.
 - Alteração de inventário sem reaplicar `scripts/apply.sh`.
+- DNS público apontando para destino incorreto (ex.: uma instância responde `200` de outro servidor enquanto as demais respondem via stack local).
 
 ### 10.4 Logs de operação
 

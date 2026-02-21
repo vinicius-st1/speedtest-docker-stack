@@ -99,6 +99,15 @@ def validate_inventory(global_cfg: dict, instances: list[dict]) -> int:
             return 2
         seen_ipv6.add(ipv6)
 
+        properties_raw = str(((inst.get("ookla") or {}).get("properties_raw") or "")).strip()
+        if not properties_raw:
+            print(
+                f"[ERRO] instância '{name}' sem ookla.properties_raw. "
+                "Preencha inventory.private.yml com o bloco completo do Ookla.",
+                file=sys.stderr,
+            )
+            return 2
+
         try:
             ip4 = ipaddress.ip_address(ipv4)
             ip6 = ipaddress.ip_address(ipv6)
