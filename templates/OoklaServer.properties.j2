@@ -1,4 +1,19 @@
 # Arquivo gerado automaticamente.
-# Insira os parâmetros oficiais fornecidos pela Ookla em properties_raw.
+# Base recomendada para ambiente IPv4/IPv6 em containers.
 
+# Obrigatório para operação com IPv6.
+OoklaServer.useIPv6 = true
+
+# Lista de domínios permitidos para operação do serviço.
+OoklaServer.allowedDomains = *.ookla.com, *.speedtest.net, *.st1internet.com.br
+
+# Hardening básico recomendado.
+OoklaServer.userAgentFilterEnabled = true
+OoklaServer.ipTracking.maxConnPerIp = 5
+OoklaServer.ipTracking.maxConnPerBucketPerIp = 10
+OoklaServer.workerThreadPool.capacity = 30000
+OoklaServer.websocket.frameSizeLimitBytes = 5242880
+OoklaServer.ipTracking.maxIdleAgeMinutes = 35
+
+# Configuração oficial fornecida pela Ookla (obrigatória para produção).
 {{ inst.ookla.properties_raw }}
