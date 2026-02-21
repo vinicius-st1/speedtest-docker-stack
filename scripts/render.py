@@ -106,6 +106,30 @@ def validate_inventory(global_cfg: dict, instances: list[dict]) -> int:
             print(f"[ERRO] IP inválido em '{name}': {exc}", file=sys.stderr)
             return 2
 
+        properties_raw = str(inst.get("ookla", {}).get("properties_raw", "")).strip()
+        if not properties_raw:
+            print(
+                f"[ERRO] properties_raw vazio em '{name}'. Preencha inventory.private.yml com o bloco oficial do Ookla.",
+                file=sys.stderr,
+            )
+            return 2
+
+        placeholder_markers = ["# key=value", "bloco oficial fornecido"]
+        if any(marker in properties_raw for marker in placeholder_markers):
+            print(
+                f"[ERRO] properties_raw em '{name}' contém placeholder de exemplo. Substitua pelo bloco oficial completo da Ookla.",
+                file=sys.stderr,
+            )
+            return 2
+
+        ssl_markers = ["openSSL.server.certificateFile", "openSSL.server.privateKeyFile"]
+        if any(marker in properties_raw for marker in ssl_markers):
+            print(
+                f"[ERRO] properties_raw em '{name}' contém configuração TLS de backend (openSSL.server.*). Neste projeto o TLS termina no container acme/nginx; remova essas linhas do inventory.private.yml.",
+                file=sys.stderr,
+            )
+            return 2
+
         if ip4.version != 4 or ip4 not in net4:
             print(f"[ERRO] IPv4 fora da subnet global em '{name}': {ipv4} não pertence a {net4}", file=sys.stderr)
             return 2
