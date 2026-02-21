@@ -33,6 +33,61 @@ Este repositório automatiza a geração de arquivos e o deploy da stack com bas
 
 ---
 
+## Passo 0 — Implementação do zero (ordem exata na VM)
+
+Use este bloco como **runbook objetivo** na VM Debian 12 (`10.4.18.202/26`), do zero até validação final:
+
+1. Preparar SO e instalar Docker.
+2. Clonar o projeto em `/opt/speedtest-docker-stack`.
+3. Instalar dependências Python (APT ou `venv`).
+4. Preencher `inventory.yml` + `inventory.private.yml` com seus 4 medidores.
+5. Executar preflight (`scripts/preflight.sh`).
+6. Aplicar stack (`scripts/apply.sh`).
+7. Validar `docker compose ps`, `curl -I` e logs por instância.
+8. Corrigir 502 (se houver) com diagnóstico da seção 10.3.1.
+9. Habilitar TLS somente após HTTP estável.
+
+### Checklist rápido (copiar e colar)
+
+```bash
+# 1) Base do sistema
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl ca-certificates gnupg lsb-release python3 python3-pip python3-venv jq
+
+# 2) Docker oficial
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update && sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+
+# 3) Projeto
+sudo mkdir -p /opt && cd /opt
+sudo git clone https://github.com/vinicius-st1/speedtest-docker-stack.git
+sudo chown -R "$USER":"$USER" /opt/speedtest-docker-stack
+cd /opt/speedtest-docker-stack
+
+# 4) Dependências Python (Debian 12 / PEP668)
+sudo apt install -y python3-yaml python3-jinja2
+
+# 5) Inventário privado
+cp /opt/speedtest-docker-stack/inventory.private.yml.example /opt/speedtest-docker-stack/inventory.private.yml
+
+# 6) Pré-validação + deploy
+bash /opt/speedtest-docker-stack/scripts/preflight.sh
+bash /opt/speedtest-docker-stack/scripts/apply.sh
+
+# 7) Validação pós-deploy
+docker compose --env-file /opt/speedtest-docker-stack/generated/.env -f /opt/speedtest-docker-stack/generated/docker-compose.yml ps
+curl -I http://speedtest01.st1internet.com.br
+curl -I http://speedtest02.st1internet.com.br
+curl -I http://speedtest03.st1internet.com.br
+curl -I http://speedtest04.st1internet.com.br
+```
+
+---
+
 ## Passo 1 — Preparar o host Debian 12
 
 > Objetivo: garantir base estável e reproduzível para operação de containers.
