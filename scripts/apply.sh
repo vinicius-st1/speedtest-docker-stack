@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 STACK_ROOT="${REPO_ROOT}"
 GEN="${STACK_ROOT}/generated"
 
-python3 "${STACK_ROOT}/scripts/render.py"
+"${STACK_ROOT}/scripts/preflight.sh"
 
 mkdir -p "${STACK_ROOT}/webroot" "${STACK_ROOT}/letsencrypt" "${STACK_ROOT}/data"
 
