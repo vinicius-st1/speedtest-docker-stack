@@ -285,6 +285,57 @@ Use este arquivo para dados sensíveis e blocos `properties_raw` de cada instân
 
 > `ookla.properties_raw` é obrigatório por instância. Sem ele, o preflight falha para evitar deploy inconsistente (causa comum de `502 Bad Gateway`).
 
+### O que exatamente colar em `properties_raw`
+
+Você deve colar **o bloco oficial completo** recebido da Ookla para cada servidor (sem editar chaves/nomes).
+
+- Fonte: portal/e-mail de submissão do servidor Ookla.
+- Formato: linhas `chave=valor`.
+- Recomendação: mantenha cada bloco no item da instância correspondente (`speedtest01`, `speedtest02`, etc.).
+
+Exemplo estrutural (apenas ilustrativo):
+
+```yaml
+# Arquivo: /opt/speedtest-docker-stack/inventory.private.yml
+# Nome exato: inventory.private.yml
+instances:
+  - name: "speedtest01"
+    ookla:
+      properties_raw: |
+        # Cole aqui o bloco oficial enviado pela Ookla para o speedtest01
+        # key=value
+
+  - name: "speedtest02"
+    ookla:
+      properties_raw: |
+        # Cole aqui o bloco oficial enviado pela Ookla para o speedtest02
+        # key=value
+
+  - name: "speedtest03"
+    ookla:
+      properties_raw: |
+        # Cole aqui o bloco oficial enviado pela Ookla para o speedtest03
+        # key=value
+
+  - name: "speedtest04"
+    ookla:
+      properties_raw: |
+        # Cole aqui o bloco oficial enviado pela Ookla para o speedtest04
+        # key=value
+```
+
+### Se `scripts/diagnose.sh` não existir na VM
+
+Isso indica que sua VM está em uma revisão anterior ao commit que adicionou o script.
+
+```bash
+cd /opt/speedtest-docker-stack
+git log --oneline -n 20
+ls -l /opt/speedtest-docker-stack/scripts/diagnose.sh
+```
+
+Se o arquivo não existir, atualize para uma revisão que contenha o script (merge do PR na `main` ou checkout da branch correta) e execute novamente `git pull`.
+
 ### Exemplo completo de arquivo
 
 **Arquivo:** `/opt/speedtest-docker-stack/inventory.private.yml`
